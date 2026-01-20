@@ -4,15 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type Produk struct {
-	ID		int		`json:"id"`
-	Nama	string	`json:"nama"`
-	Harga	int		`json:"harga"`
-	Stok	int		`json:"stok"`
+	ID    int    `json:"id"`
+	Nama  string `json:"nama"`
+	Harga int    `json:"harga"`
+	Stok  int    `json:"stok"`
 }
 
 var produk = []Produk{
@@ -31,7 +31,11 @@ func getProdukByID(w http.ResponseWriter, r *http.Request) {
 	for _, p := range produk {
 		if p.ID == id {
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(p)
+			err := json.NewEncoder(w).Encode(p)
+			if err != nil {
+				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+				return
+			}
 			return
 		}
 	}
@@ -46,7 +50,7 @@ func updateProduk(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid Produk ID", http.StatusBadRequest)
 		return
 	}
-	
+
 	var updateProduk Produk
 	err = json.NewDecoder(r.Body).Decode(&updateProduk)
 	if err != nil {
@@ -59,7 +63,11 @@ func updateProduk(w http.ResponseWriter, r *http.Request) {
 			updateProduk.ID = id
 			produk[i] = updateProduk
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(updateProduk)
+			err = json.NewEncoder(w).Encode(updateProduk)
+			if err != nil {
+				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+				return
+			}
 			return
 		}
 	}
@@ -79,10 +87,14 @@ func deleteProduk(w http.ResponseWriter, r *http.Request) {
 		if p.ID == id {
 			produk = append(produk[:i], produk[i+1:]...)
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]string{
-            "status":  "OK",
-            "message": "sukses delete",
-        })
+			err = json.NewEncoder(w).Encode(map[string]string{
+				"status":  "OK",
+				"message": "sukses delete",
+			})
+			if err != nil {
+				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+				return
+			}
 			return
 		}
 	}
@@ -93,52 +105,66 @@ func deleteProduk(w http.ResponseWriter, r *http.Request) {
 func main() {
 
 	http.HandleFunc("/api/produk/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" {
+		switch r.Method {
+		case "GET":
 			getProdukByID(w, r)
-		} else if r.Method == "PUT" {
+		case "PUT":
 			updateProduk(w, r)
-		} else if r.Method == "DELETE" {
+		case "DELETE":
 			deleteProduk(w, r)
 		}
-		
+
 	})
 
 	http.HandleFunc("/api/produk", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET" {
+		switch r.Method {
+		case "GET":
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(produk)
-			} else if r.Method == "POST" {
-				var produkBaru Produk
-				err := json.NewDecoder(r.Body).Decode(&produkBaru)
-				if err != nil {
-					http.Error(w, "Invalid request", http.StatusBadRequest)
-					return
-				}
-				
-				produkBaru.ID = len(produk) + 1
-				produk = append(produk, produkBaru)
-				
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusCreated)
-				json.NewEncoder(w).Encode(produkBaru)
+			err := json.NewEncoder(w).Encode(produk)
+			if err != nil {
+				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 				return
+			}
+		case "POST":
+			var produkBaru Produk
+			err := json.NewDecoder(r.Body).Decode(&produkBaru)
+			if err != nil {
+				http.Error(w, "Invalid request", http.StatusBadRequest)
+				return
+			}
+
+			produkBaru.ID = len(produk) + 1
+			produk = append(produk, produkBaru)
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
+			err = json.NewEncoder(w).Encode(produkBaru)
+			if err != nil {
+				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+				return
+			}
+			return
 		}
 	})
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(map[string]string{
-            "status":  "OK",
-            "message": "API running",
-        })
+		w.Header().Set("Content-Type", "application/json")
+		err := json.NewEncoder(w).Encode(map[string]string{
+			"status":  "OK",
+			"message": "API running",
+		})
+		if err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return
+		}
 
-    })
+	})
 
-    fmt.Println("server running di localhost:8080")
+	fmt.Println("server running di localhost:8080")
 
-    err := http.ListenAndServe(":8080", nil)
+	err := http.ListenAndServe(":8080", nil)
 
-    if err != nil {
-        fmt.Println("gagal running server")
-    }
+	if err != nil {
+		fmt.Println("gagal running server")
+	}
 }
