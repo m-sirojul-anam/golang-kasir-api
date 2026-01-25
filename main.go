@@ -20,6 +20,26 @@ var produk = []Produk{
 	{ID: 2, Nama: "Vit 1000ml", Harga: 4000, Stok: 5},
 }
 
+type Category struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+var category = []Category{
+	{ID: 1, Name: "Snack", Description: "Makanan Ringan"},
+	{ID: 2, Name: "Drink", Description: "Minuman"},
+}
+
+func getProduk(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(produk)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
 func getProdukByID(w http.ResponseWriter, r *http.Request) {
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/produk/")
 	id, err := strconv.Atoi(idStr)
@@ -41,6 +61,26 @@ func getProdukByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Error(w, "Produk belum ada", http.StatusNotFound)
+}
+
+func createProduk(w http.ResponseWriter, r *http.Request) {
+	var produkBaru Produk
+	err := json.NewDecoder(r.Body).Decode(&produkBaru)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	produkBaru.ID = len(produk) + 1
+	produk = append(produk, produkBaru)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(produkBaru)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 func updateProduk(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +142,129 @@ func deleteProduk(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Produk belum ada", http.StatusNotFound)
 }
 
+func getCategory(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(category)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func getCategoryByID(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/categories/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid Category ID", http.StatusBadRequest)
+		return
+	}
+
+	for _, p := range category {
+		if p.ID == id {
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(p)
+			if err != nil {
+				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+	}
+
+	http.Error(w, "Category belum ada", http.StatusNotFound)
+}
+
+func createCategory(w http.ResponseWriter, r *http.Request) {
+	var categoryBaru Category
+	err := json.NewDecoder(r.Body).Decode(&categoryBaru)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	categoryBaru.ID = len(category) + 1
+	category = append(category, categoryBaru)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(categoryBaru)
+	if err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+func updateCategory(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/categories/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid Category ID", http.StatusBadRequest)
+		return
+	}
+
+	var updateCategory Category
+	err = json.NewDecoder(r.Body).Decode(&updateCategory)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	for i := range category {
+		if category[i].ID == id {
+			updateCategory.ID = id
+			category[i] = updateCategory
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(updateCategory)
+			if err != nil {
+				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+	}
+
+	http.Error(w, "Category belum ada", http.StatusNotFound)
+}
+
+func deleteCategory(w http.ResponseWriter, r *http.Request) {
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/categories/")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid Category ID", http.StatusBadRequest)
+		return
+	}
+
+	for i, p := range category {
+		if p.ID == id {
+			category = append(category[:i], category[i+1:]...)
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(map[string]string{
+				"status":  "OK",
+				"message": "sukses delete",
+			})
+			if err != nil {
+				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+	}
+
+	http.Error(w, "Category belum ada", http.StatusNotFound)
+}
+
 func main() {
+
+	http.HandleFunc("/api/produk", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			getProduk(w, r)
+		case "POST":
+			createProduk(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
 	http.HandleFunc("/api/produk/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -112,45 +274,39 @@ func main() {
 			updateProduk(w, r)
 		case "DELETE":
 			deleteProduk(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
-
 	})
 
-	http.HandleFunc("/api/produk", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/api/categories", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(produk)
-			if err != nil {
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-				return
-			}
+			getCategory(w, r)
 		case "POST":
-			var produkBaru Produk
-			err := json.NewDecoder(r.Body).Decode(&produkBaru)
-			if err != nil {
-				http.Error(w, "Invalid request", http.StatusBadRequest)
-				return
-			}
+			createCategory(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
-			produkBaru.ID = len(produk) + 1
-			produk = append(produk, produkBaru)
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusCreated)
-			err = json.NewEncoder(w).Encode(produkBaru)
-			if err != nil {
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-				return
-			}
-			return
+	http.HandleFunc("/api/categories/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			getCategoryByID(w, r)
+		case "PUT":
+			updateCategory(w, r)
+		case "DELETE":
+			deleteCategory(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(map[string]string{
-			"status":  "OK",
+			"status":  strconv.Itoa(http.StatusOK),
 			"message": "API running",
 		})
 		if err != nil {
