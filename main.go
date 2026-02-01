@@ -41,19 +41,23 @@ func main() {
 	}
 	defer db.Close()
 
-	// Product routes
+	// Repositories
 	productRepo := repositories.NewProductRepository(db)
-	productService := services.NewProductService(productRepo)
-	productHandler := handlers.NewProductHandler(productService)
+	categoryRepo := repositories.NewCategoryRepository(db)
 
+	// Services
+	productService := services.NewProductService(productRepo, categoryRepo)
+	categoryService := services.NewCategoryService(categoryRepo)
+
+	// Handlers
+	productHandler := handlers.NewProductHandler(productService)
+	categoryHandler := handlers.NewCategoryHandler(categoryService)
+
+	// Product routes
 	http.HandleFunc("/api/products", productHandler.HandleProducts)
 	http.HandleFunc("/api/products/", productHandler.HandleProductByID)
 
 	// Category routes
-	categoryRepo := repositories.NewCategoryRepository(db)
-	categoryService := services.NewCategoryService(categoryRepo)
-	categoryHandler := handlers.NewCategoryHandler(categoryService)
-
 	http.HandleFunc("/api/categories", categoryHandler.HandleCategorys)
 	http.HandleFunc("/api/categories/", categoryHandler.HandleCategoryByID)
 
