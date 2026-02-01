@@ -16,128 +16,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-type Category struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-}
-
-var category = []Category{
-	{ID: 1, Name: "Snack", Description: "Makanan Ringan"},
-	{ID: 2, Name: "Drink", Description: "Minuman"},
-}
-
-func getCategory(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(category)
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
-}
-
-func getCategoryByID(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/categories/")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid Category ID", http.StatusBadRequest)
-		return
-	}
-
-	for _, p := range category {
-		if p.ID == id {
-			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(p)
-			if err != nil {
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-				return
-			}
-			return
-		}
-	}
-
-	http.Error(w, "Category belum ada", http.StatusNotFound)
-}
-
-func createCategory(w http.ResponseWriter, r *http.Request) {
-	var categoryBaru Category
-	err := json.NewDecoder(r.Body).Decode(&categoryBaru)
-	if err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	categoryBaru.ID = len(category) + 1
-	category = append(category, categoryBaru)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(categoryBaru)
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
-}
-
-func updateCategory(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/categories/")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid Category ID", http.StatusBadRequest)
-		return
-	}
-
-	var updateCategory Category
-	err = json.NewDecoder(r.Body).Decode(&updateCategory)
-	if err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-
-	for i := range category {
-		if category[i].ID == id {
-			updateCategory.ID = id
-			category[i] = updateCategory
-			w.Header().Set("Content-Type", "application/json")
-			err = json.NewEncoder(w).Encode(updateCategory)
-			if err != nil {
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-				return
-			}
-			return
-		}
-	}
-
-	http.Error(w, "Category belum ada", http.StatusNotFound)
-}
-
-func deleteCategory(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/categories/")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "Invalid Category ID", http.StatusBadRequest)
-		return
-	}
-
-	for i, p := range category {
-		if p.ID == id {
-			category = append(category[:i], category[i+1:]...)
-			w.Header().Set("Content-Type", "application/json")
-			err = json.NewEncoder(w).Encode(map[string]string{
-				"status":  "OK",
-				"message": "sukses delete",
-			})
-			if err != nil {
-				http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-				return
-			}
-			return
-		}
-	}
-
-	http.Error(w, "Category belum ada", http.StatusNotFound)
-}
-
 type Config struct {
 	Port   string `mapstructure:"PORT"`
 	DBConn string `mapstructure:"DB_CONN"`
@@ -163,6 +41,7 @@ func main() {
 	}
 	defer db.Close()
 
+	// Product routes
 	productRepo := repositories.NewProductRepository(db)
 	productService := services.NewProductService(productRepo)
 	productHandler := handlers.NewProductHandler(productService)
@@ -170,6 +49,15 @@ func main() {
 	http.HandleFunc("/api/products", productHandler.HandleProducts)
 	http.HandleFunc("/api/products/", productHandler.HandleProductByID)
 
+	// Category routes
+	categoryRepo := repositories.NewCategoryRepository(db)
+	categoryService := services.NewCategoryService(categoryRepo)
+	categoryHandler := handlers.NewCategoryHandler(categoryService)
+
+	http.HandleFunc("/api/categories", categoryHandler.HandleCategorys)
+	http.HandleFunc("/api/categories/", categoryHandler.HandleCategoryByID)
+
+	// Health check route
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(map[string]string{
