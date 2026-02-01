@@ -18,7 +18,7 @@ func (repo *ProductRepository) GetAll() ([]models.Product, error) {
 	query := `
 		SELECT 
 			p.id, p.name, p.price, p.stock,
-			c.id, c.name, c.description 
+			c.name 
 		FROM products p
 		LEFT JOIN categories c ON p.category_id = c.id
 	`
@@ -32,20 +32,16 @@ func (repo *ProductRepository) GetAll() ([]models.Product, error) {
 	for rows.Next() {
 		var p models.Product
 
-		var cID sql.NullInt64
 		var cName sql.NullString
-		var cDescription sql.NullString
 
-		err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &cID, &cName, &cDescription)
+		err := rows.Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &cName)
 		if err != nil {
 			return nil, err
 		}
 
-		if cID.Valid {
-			p.Category = &models.Category{
-				ID:          int(cID.Int64),
-				Name:        cName.String,
-				Description: cDescription.String,
+		if cName.Valid {
+			p.Category = &models.CategoryResponse{
+				Name: cName.String,
 			}
 		}
 
@@ -69,18 +65,16 @@ func (repo *ProductRepository) GetByID(id int) (*models.Product, error) {
 	query := `
 		SELECT
 			p.id, p.name, p.price, p.stock,
-			c.id, c.name, c.description 
+			c.name 
 		FROM products p
 		LEFT JOIN categories c ON p.category_id = c.id
 		WHERE p.id = $1
 	`
 	var p models.Product
 
-	var cID sql.NullInt64
 	var cName sql.NullString
-	var cDescription sql.NullString
 
-	err := repo.db.QueryRow(query, id).Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &cID, &cName, &cDescription)
+	err := repo.db.QueryRow(query, id).Scan(&p.ID, &p.Name, &p.Price, &p.Stock, &cName)
 	if err == sql.ErrNoRows {
 		return nil, errors.New("Product not found.")
 	}
@@ -88,11 +82,9 @@ func (repo *ProductRepository) GetByID(id int) (*models.Product, error) {
 		return nil, err
 	}
 
-	if cID.Valid {
-		p.Category = &models.Category{
-			ID:          int(cID.Int64),
-			Name:        cName.String,
-			Description: cDescription.String,
+	if cName.Valid {
+		p.Category = &models.CategoryResponse{
+			Name: cName.String,
 		}
 	}
 

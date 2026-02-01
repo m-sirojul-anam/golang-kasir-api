@@ -14,14 +14,20 @@ import (
 	"strings"
 
 	"github.com/spf13/viper"
+	httpSwagger "github.com/swaggo/http-swagger"
+
+	_ "kasir-api/docs"
 )
 
 type Config struct {
-	Port   string `mapstructure:"PORT"`
-	DBConn string `mapstructure:"DB_CONN"`
+	Port          string `mapstructure:"PORT"`
+	DBConn        string `mapstructure:"DB_CONN"`
+	EnableSwagger bool   `mapstructure:"ENABLE_SWAGGER"`
 }
 
 func main() {
+	mux := http.NewServeMux()
+
 	viper.AutomaticEnv()
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
@@ -31,8 +37,9 @@ func main() {
 	}
 
 	config := Config{
-		Port:   viper.GetString("PORT"),
-		DBConn: viper.GetString("DB_CONN"),
+		Port:          viper.GetString("PORT"),
+		DBConn:        viper.GetString("DB_CONN"),
+		EnableSwagger: viper.GetBool("ENABLE_SWAGGER"),
 	}
 
 	db, err := database.InitDB(config.DBConn)
@@ -54,15 +61,15 @@ func main() {
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
 
 	// Product routes
-	http.HandleFunc("/api/products", productHandler.HandleProducts)
-	http.HandleFunc("/api/products/", productHandler.HandleProductByID)
+	mux.HandleFunc("/api/products", productHandler.HandleProducts)
+	mux.HandleFunc("/api/products/", productHandler.HandleProductByID)
 
 	// Category routes
-	http.HandleFunc("/api/categories", categoryHandler.HandleCategorys)
-	http.HandleFunc("/api/categories/", categoryHandler.HandleCategoryByID)
+	mux.HandleFunc("/api/categories", categoryHandler.HandleCategorys)
+	mux.HandleFunc("/api/categories/", categoryHandler.HandleCategoryByID)
 
 	// Health check route
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(map[string]string{
 			"status":  strconv.Itoa(http.StatusOK),
@@ -75,9 +82,14 @@ func main() {
 
 	})
 
+	if config.EnableSwagger {
+		mux.Handle("/swagger/", httpSwagger.WrapHandler)
+		fmt.Println("swagger di enable")
+	}
+
 	fmt.Println("server running di localhost:8080")
 
-	err = http.ListenAndServe(":"+config.Port, nil)
+	err = http.ListenAndServe(":"+config.Port, mux)
 
 	if err != nil {
 		fmt.Println("gagal running server")

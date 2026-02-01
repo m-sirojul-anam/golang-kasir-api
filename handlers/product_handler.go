@@ -2,11 +2,16 @@ package handlers
 
 import (
 	"encoding/json"
+	"kasir-api/dto"
 	"kasir-api/models"
 	"kasir-api/services"
+	"kasir-api/utils"
 	"net/http"
 	"strconv"
 	"strings"
+
+	_ "github.com/swaggo/swag/example/celler/httputil"
+	_ "github.com/swaggo/swag/example/celler/model"
 )
 
 type ProductHandler struct {
@@ -17,6 +22,14 @@ func NewProductHandler(service *services.ProductService) *ProductHandler {
 	return &ProductHandler{productService: service}
 }
 
+// GetAllProducts godoc
+// @Summary Get all products
+// @Description Get list of products
+// @Tags Products
+// @Accept json
+// @Produce json
+// @Success 200 {object} dto.APIResponse
+// @Router /api/products [get]
 func (h *ProductHandler) HandleProducts(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -31,15 +44,17 @@ func (h *ProductHandler) HandleProducts(w http.ResponseWriter, r *http.Request) 
 func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	products, err := h.productService.GetAllProducts()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		utils.WriteJSON(
+			w, http.StatusInternalServerError, dto.ErrorResponse("failed to fetch products"),
+		)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(products); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
+	if products == nil {
+		products = []models.Product{}
 	}
+
+	utils.WriteJSON(w, http.StatusOK, dto.SuccessResponse("Success get products", products))
 }
 
 func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
