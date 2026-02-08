@@ -51,22 +51,28 @@ func main() {
 	// Repositories
 	productRepo := repositories.NewProductRepository(db)
 	categoryRepo := repositories.NewCategoryRepository(db)
+	transactionRepo := repositories.NewTransactionRepository(db)
 
 	// Services
 	productService := services.NewProductService(productRepo, categoryRepo)
 	categoryService := services.NewCategoryService(categoryRepo)
+	transactionService := services.NewTransactionService(transactionRepo)
 
 	// Handlers
 	productHandler := handlers.NewProductHandler(productService)
 	categoryHandler := handlers.NewCategoryHandler(categoryService)
+	transactionHandler := handlers.NewTransactionHandler(transactionService)
 
 	// Product routes
-	mux.HandleFunc("/api/products", productHandler.HandleProducts)
-	mux.HandleFunc("/api/products/", productHandler.HandleProductByID)
+	mux.HandleFunc("/api/product", productHandler.HandleProducts)
+	mux.HandleFunc("/api/product/", productHandler.HandleProductByID)
 
 	// Category routes
 	mux.HandleFunc("/api/categories", categoryHandler.HandleCategorys)
 	mux.HandleFunc("/api/categories/", categoryHandler.HandleCategoryByID)
+
+	// Transaction routes
+	mux.HandleFunc("/api/checkout", transactionHandler.HandleCheckout)
 
 	// Health check route
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

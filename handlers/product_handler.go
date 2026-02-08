@@ -14,6 +14,14 @@ import (
 	_ "github.com/swaggo/swag/example/celler/model"
 )
 
+const (
+	productPathPrefix       = "/api/product/"
+	invalidProductIDMsg     = "Invalid product ID"
+	contentTypeHeader       = "Content-Type"
+	contentTypeJSON         = "application/json"
+	failedEncodeResponseMsg = "Failed to encode response"
+)
+
 type ProductHandler struct {
 	productService *services.ProductService
 }
@@ -29,7 +37,7 @@ func NewProductHandler(service *services.ProductService) *ProductHandler {
 // @Accept json
 // @Produce json
 // @Success 200 {object} dto.APIResponse
-// @Router /api/products [get]
+// @Router /api/product [get]
 func (h *ProductHandler) HandleProducts(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
@@ -42,7 +50,8 @@ func (h *ProductHandler) HandleProducts(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *ProductHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	products, err := h.productService.GetAllProducts()
+	name := r.URL.Query().Get("name")
+	products, err := h.productService.GetAllProducts(name)
 	if err != nil {
 		utils.WriteJSON(
 			w, http.StatusInternalServerError, dto.ErrorResponse("failed to fetch products"),
@@ -71,10 +80,10 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentTypeHeader, contentTypeJSON)
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(product); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		http.Error(w, failedEncodeResponseMsg, http.StatusInternalServerError)
 		return
 	}
 }
@@ -93,10 +102,10 @@ func (h *ProductHandler) HandleProductByID(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ProductHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/products/")
+	idStr := strings.TrimPrefix(r.URL.Path, productPathPrefix)
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		http.Error(w, invalidProductIDMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -106,18 +115,18 @@ func (h *ProductHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentTypeHeader, contentTypeJSON)
 	if err := json.NewEncoder(w).Encode(product); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		http.Error(w, failedEncodeResponseMsg, http.StatusInternalServerError)
 		return
 	}
 }
 
 func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/products/")
+	idStr := strings.TrimPrefix(r.URL.Path, productPathPrefix)
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		http.Error(w, invalidProductIDMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -135,18 +144,18 @@ func (h *ProductHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentTypeHeader, contentTypeJSON)
 	if err := json.NewEncoder(w).Encode(product); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		http.Error(w, failedEncodeResponseMsg, http.StatusInternalServerError)
 		return
 	}
 }
 
 func (h *ProductHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/products/")
+	idStr := strings.TrimPrefix(r.URL.Path, productPathPrefix)
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Invalid product ID", http.StatusBadRequest)
+		http.Error(w, invalidProductIDMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -156,11 +165,11 @@ func (h *ProductHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentTypeHeader, contentTypeJSON)
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"message": "Product deleted successfully",
 	}); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		http.Error(w, failedEncodeResponseMsg, http.StatusInternalServerError)
 		return
 	}
 }
